@@ -2,20 +2,46 @@
 
 import { useState, useCallback } from 'react'
 
+const SUPPORTED_TYPES = {
+  'application/pdf': '.pdf',
+  'text/markdown': '.md',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+}
+
+const SUPPORTED_EXTENSIONS = ['.pdf', '.md', '.markdown', '.docx']
+
 interface ExtractionResult {
   source_file: string
+  file_type: string
   extraction_date: string
   file_hash: string
   metadata: {
     title: string
-    author: string | null
+    author: string | string[] | null
     subject: string | null
     keywords: string[]
-    page_count: number
+    page_count?: number
+    word_count?: number
+    char_count?: number
   }
-  toc: Array<{ level: number; title: string; page: number }>
-  pages: Array<{ page: number; text: string }>
+  toc: Array<{ level: number; title: string; page?: number; line?: number; paragraph?: number }>
+  pages?: Array<{ page: number; text: string }>
+  sections?: Array<{ section: number; title: string; text: string }>
   text_output?: string
+}
+
+function getFileTypeLabel(fileType: string): string {
+  switch (fileType) {
+    case 'pdf': return 'PDF'
+    case 'markdown': return 'Markdown'
+    case 'docx': return 'Word'
+    default: return fileType
+  }
+}
+
+function isValidFile(file: File): boolean {
+  const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+  return SUPPORTED_EXTENSIONS.includes(ext)
 }
 
 export default function Home() {
@@ -43,19 +69,26 @@ export default function Home() {
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0]
-      if (droppedFile.type === 'application/pdf') {
+      if (isValidFile(droppedFile)) {
         setFile(droppedFile)
         setError(null)
+        setResult(null)
       } else {
-        setError('Please drop a PDF file')
+        setError('Unsupported file type. Please use PDF, Markdown (.md), or Word (.docx)')
       }
     }
   }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
-      setError(null)
+      const selectedFile = e.target.files[0]
+      if (isValidFile(selectedFile)) {
+        setFile(selectedFile)
+        setError(null)
+        setResult(null)
+      } else {
+        setError('Unsupported file type. Please use PDF, Markdown (.md), or Word (.docx)')
+      }
     }
   }
 
@@ -67,7 +100,6 @@ export default function Home() {
     setResult(null)
 
     try {
-      // Convert file to base64
       const buffer = await file.arrayBuffer()
       const base64 = btoa(
         new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -127,13 +159,24 @@ export default function Home() {
     URL.revokeObjectURL(url)
   }
 
+  const getAuthorDisplay = (author: string | string[] | null): string => {
+    if (!author) return 'N/A'
+    if (Array.isArray(author)) return author.join(', ')
+    return author
+  }
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>PDF Extractor</h1>
+        <h1 style={styles.title}>Document Extractor</h1>
         <p style={styles.subtitle}>
-          Extract text, metadata, and table of contents from PDF documents
+          Extract text, metadata, and table of contents from PDF, Markdown, and Word documents
         </p>
+        <div style={styles.badges}>
+          <span style={styles.badge}>PDF</span>
+          <span style={styles.badge}>Markdown</span>
+          <span style={styles.badge}>Word</span>
+        </div>
       </header>
 
       <main style={styles.main}>
@@ -150,7 +193,7 @@ export default function Home() {
         >
           <input
             type="file"
-            accept=".pdf"
+            accept=".pdf,.md,.markdown,.docx"
             onChange={handleFileChange}
             style={styles.fileInput}
             id="file-input"
@@ -159,7 +202,7 @@ export default function Home() {
             {file ? (
               <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
             ) : (
-              <span>Drop PDF here or click to browse</span>
+              <span>Drop file here or click to browse<br/><small style={{opacity: 0.7}}>Supports: PDF, Markdown (.md), Word (.docx)</small></span>
             )}
           </label>
         </div>
@@ -188,7 +231,7 @@ export default function Home() {
             ...((!file || loading) ? styles.buttonDisabled : {}),
           }}
         >
-          {loading ? 'Extracting...' : 'Extract PDF'}
+          {loading ? 'Extracting...' : 'Extract Document'}
         </button>
 
         {/* Error */}
@@ -198,7 +241,10 @@ export default function Home() {
         {result && (
           <div style={styles.results}>
             <div style={styles.resultHeader}>
-              <h2 style={styles.resultTitle}>Extraction Complete</h2>
+              <h2 style={styles.resultTitle}>
+                Extraction Complete
+                <span style={styles.fileTypeBadge}>{getFileTypeLabel(result.file_type)}</span>
+              </h2>
               <button onClick={handleDownload} style={styles.downloadButton}>
                 Download {outputFormat.toUpperCase()}
               </button>
@@ -215,22 +261,36 @@ export default function Home() {
                   </tr>
                   <tr>
                     <td style={styles.metadataLabel}>Author:</td>
-                    <td>{result.metadata.author || 'N/A'}</td>
+                    <td>{getAuthorDisplay(result.metadata.author)}</td>
                   </tr>
-                  <tr>
-                    <td style={styles.metadataLabel}>Pages:</td>
-                    <td>{result.metadata.page_count}</td>
-                  </tr>
+                  {result.metadata.page_count && (
+                    <tr>
+                      <td style={styles.metadataLabel}>Pages:</td>
+                      <td>{result.metadata.page_count}</td>
+                    </tr>
+                  )}
+                  {result.metadata.word_count && (
+                    <tr>
+                      <td style={styles.metadataLabel}>Words:</td>
+                      <td>{result.metadata.word_count.toLocaleString()}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td style={styles.metadataLabel}>Subject:</td>
                     <td>{result.metadata.subject || 'N/A'}</td>
                   </tr>
+                  {result.metadata.keywords && result.metadata.keywords.length > 0 && (
+                    <tr>
+                      <td style={styles.metadataLabel}>Keywords:</td>
+                      <td>{result.metadata.keywords.join(', ')}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* TOC */}
-            {result.toc.length > 0 && (
+            {result.toc && result.toc.length > 0 && (
               <div style={styles.tocBox}>
                 <h3 style={styles.sectionTitle}>Table of Contents</h3>
                 <ul style={styles.tocList}>
@@ -242,7 +302,9 @@ export default function Home() {
                         paddingLeft: `${(item.level - 1) * 20}px`,
                       }}
                     >
-                      {item.title} <span style={styles.tocPage}>p. {item.page}</span>
+                      {item.title}
+                      {item.page && <span style={styles.tocPage}>p. {item.page}</span>}
+                      {item.line && <span style={styles.tocPage}>line {item.line}</span>}
                     </li>
                   ))}
                 </ul>
@@ -253,7 +315,9 @@ export default function Home() {
             <div style={styles.previewBox}>
               <h3 style={styles.sectionTitle}>Text Preview</h3>
               <pre style={styles.preview}>
-                {result.text_output?.slice(0, 3000) || JSON.stringify(result.pages.slice(0, 2), null, 2)}
+                {result.text_output?.slice(0, 3000) ||
+                 (result.pages ? JSON.stringify(result.pages.slice(0, 2), null, 2) :
+                  result.sections ? JSON.stringify(result.sections.slice(0, 2), null, 2) : '')}
                 {(result.text_output?.length || 0) > 3000 && '\n\n... [Download for full content]'}
               </pre>
             </div>
@@ -262,7 +326,7 @@ export default function Home() {
       </main>
 
       <footer style={styles.footer}>
-        <p>PDF Extractor - Built with Next.js and PyMuPDF</p>
+        <p>Document Extractor - Supports PDF, Markdown, and Word documents</p>
       </footer>
     </div>
   )
@@ -289,6 +353,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   subtitle: {
     margin: '0.5rem 0 0',
     opacity: 0.8,
+  },
+  badges: {
+    marginTop: '1rem',
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '0.5rem',
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '20px',
+    fontSize: '0.85rem',
   },
   main: {
     flex: 1,
@@ -368,10 +444,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '1rem',
+    flexWrap: 'wrap',
+    gap: '1rem',
   },
   resultTitle: {
     margin: 0,
     fontSize: '1.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  },
+  fileTypeBadge: {
+    backgroundColor: '#4a90d9',
+    color: 'white',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 600,
   },
   downloadButton: {
     padding: '0.75rem 1.5rem',
@@ -424,6 +513,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   tocPage: {
     color: '#888',
     fontSize: '0.9rem',
+    marginLeft: '0.5rem',
   },
   previewBox: {
     backgroundColor: 'white',
