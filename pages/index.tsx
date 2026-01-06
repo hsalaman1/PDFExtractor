@@ -1,12 +1,5 @@
-'use client'
-
 import { useState, useCallback } from 'react'
-
-const SUPPORTED_TYPES = {
-  'application/pdf': '.pdf',
-  'text/markdown': '.md',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-}
+import Head from 'next/head'
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.md', '.markdown', '.docx']
 
@@ -166,169 +159,162 @@ export default function Home() {
   }
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Document Extractor</h1>
-        <p style={styles.subtitle}>
-          Extract text, metadata, and table of contents from PDF, Markdown, and Word documents
-        </p>
-        <div style={styles.badges}>
-          <span style={styles.badge}>PDF</span>
-          <span style={styles.badge}>Markdown</span>
-          <span style={styles.badge}>Word</span>
-        </div>
-      </header>
-
-      <main style={styles.main}>
-        {/* Upload Section */}
-        <div
-          style={{
-            ...styles.dropZone,
-            ...(dragActive ? styles.dropZoneActive : {}),
-          }}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            accept=".pdf,.md,.markdown,.docx"
-            onChange={handleFileChange}
-            style={styles.fileInput}
-            id="file-input"
-          />
-          <label htmlFor="file-input" style={styles.fileLabel}>
-            {file ? (
-              <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-            ) : (
-              <span>Drop file here or click to browse<br/><small style={{opacity: 0.7}}>Supports: PDF, Markdown (.md), Word (.docx)</small></span>
-            )}
-          </label>
-        </div>
-
-        {/* Options */}
-        <div style={styles.options}>
-          <label style={styles.optionLabel}>
-            Output Format:
-            <select
-              value={outputFormat}
-              onChange={(e) => setOutputFormat(e.target.value as 'txt' | 'json')}
-              style={styles.select}
-            >
-              <option value="txt">Text (.txt)</option>
-              <option value="json">JSON (.json)</option>
-            </select>
-          </label>
-        </div>
-
-        {/* Extract Button */}
-        <button
-          onClick={handleExtract}
-          disabled={!file || loading}
-          style={{
-            ...styles.button,
-            ...((!file || loading) ? styles.buttonDisabled : {}),
-          }}
-        >
-          {loading ? 'Extracting...' : 'Extract Document'}
-        </button>
-
-        {/* Error */}
-        {error && <div style={styles.error}>{error}</div>}
-
-        {/* Results */}
-        {result && (
-          <div style={styles.results}>
-            <div style={styles.resultHeader}>
-              <h2 style={styles.resultTitle}>
-                Extraction Complete
-                <span style={styles.fileTypeBadge}>{getFileTypeLabel(result.file_type)}</span>
-              </h2>
-              <button onClick={handleDownload} style={styles.downloadButton}>
-                Download {outputFormat.toUpperCase()}
-              </button>
-            </div>
-
-            {/* Metadata */}
-            <div style={styles.metadataBox}>
-              <h3 style={styles.sectionTitle}>Metadata</h3>
-              <table style={styles.metadataTable}>
-                <tbody>
-                  <tr>
-                    <td style={styles.metadataLabel}>Title:</td>
-                    <td>{result.metadata.title}</td>
-                  </tr>
-                  <tr>
-                    <td style={styles.metadataLabel}>Author:</td>
-                    <td>{getAuthorDisplay(result.metadata.author)}</td>
-                  </tr>
-                  {result.metadata.page_count && (
-                    <tr>
-                      <td style={styles.metadataLabel}>Pages:</td>
-                      <td>{result.metadata.page_count}</td>
-                    </tr>
-                  )}
-                  {result.metadata.word_count && (
-                    <tr>
-                      <td style={styles.metadataLabel}>Words:</td>
-                      <td>{result.metadata.word_count.toLocaleString()}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td style={styles.metadataLabel}>Subject:</td>
-                    <td>{result.metadata.subject || 'N/A'}</td>
-                  </tr>
-                  {result.metadata.keywords && result.metadata.keywords.length > 0 && (
-                    <tr>
-                      <td style={styles.metadataLabel}>Keywords:</td>
-                      <td>{result.metadata.keywords.join(', ')}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* TOC */}
-            {result.toc && result.toc.length > 0 && (
-              <div style={styles.tocBox}>
-                <h3 style={styles.sectionTitle}>Table of Contents</h3>
-                <ul style={styles.tocList}>
-                  {result.toc.map((item, i) => (
-                    <li
-                      key={i}
-                      style={{
-                        ...styles.tocItem,
-                        paddingLeft: `${(item.level - 1) * 20}px`,
-                      }}
-                    >
-                      {item.title}
-                      {item.page && <span style={styles.tocPage}>p. {item.page}</span>}
-                      {item.line && <span style={styles.tocPage}>line {item.line}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Text Preview */}
-            <div style={styles.previewBox}>
-              <h3 style={styles.sectionTitle}>Text Preview</h3>
-              <pre style={styles.preview}>
-                {result.text_output?.slice(0, 3000) ||
-                 (result.pages ? JSON.stringify(result.pages.slice(0, 2), null, 2) :
-                  result.sections ? JSON.stringify(result.sections.slice(0, 2), null, 2) : '')}
-                {(result.text_output?.length || 0) > 3000 && '\n\n... [Download for full content]'}
-              </pre>
-            </div>
+    <>
+      <Head>
+        <title>Document Extractor</title>
+        <meta name="description" content="Extract text, metadata, and table of contents from PDF, Markdown, and Word documents" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <h1 style={styles.title}>Document Extractor</h1>
+          <p style={styles.subtitle}>
+            Extract text, metadata, and table of contents from PDF, Markdown, and Word documents
+          </p>
+          <div style={styles.badges}>
+            <span style={styles.badge}>PDF</span>
+            <span style={styles.badge}>Markdown</span>
+            <span style={styles.badge}>Word</span>
           </div>
-        )}
-      </main>
+        </header>
 
-      <footer style={styles.footer}>
-        <p>Document Extractor - Supports PDF, Markdown, and Word documents</p>
-      </footer>
-    </div>
+        <main style={styles.main}>
+          <div
+            style={{
+              ...styles.dropZone,
+              ...(dragActive ? styles.dropZoneActive : {}),
+            }}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              accept=".pdf,.md,.markdown,.docx"
+              onChange={handleFileChange}
+              style={styles.fileInput}
+              id="file-input"
+            />
+            <label htmlFor="file-input" style={styles.fileLabel}>
+              {file ? (
+                <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+              ) : (
+                <span>Drop file here or click to browse<br/><small style={{opacity: 0.7}}>Supports: PDF, Markdown (.md), Word (.docx)</small></span>
+              )}
+            </label>
+          </div>
+
+          <div style={styles.options}>
+            <label style={styles.optionLabel}>
+              Output Format:
+              <select
+                value={outputFormat}
+                onChange={(e) => setOutputFormat(e.target.value as 'txt' | 'json')}
+                style={styles.select}
+              >
+                <option value="txt">Text (.txt)</option>
+                <option value="json">JSON (.json)</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            onClick={handleExtract}
+            disabled={!file || loading}
+            style={{
+              ...styles.button,
+              ...((!file || loading) ? styles.buttonDisabled : {}),
+            }}
+          >
+            {loading ? 'Extracting...' : 'Extract Document'}
+          </button>
+
+          {error && <div style={styles.error}>{error}</div>}
+
+          {result && (
+            <div style={styles.results}>
+              <div style={styles.resultHeader}>
+                <h2 style={styles.resultTitle}>
+                  Extraction Complete
+                  <span style={styles.fileTypeBadge}>{getFileTypeLabel(result.file_type)}</span>
+                </h2>
+                <button onClick={handleDownload} style={styles.downloadButton}>
+                  Download {outputFormat.toUpperCase()}
+                </button>
+              </div>
+
+              <div style={styles.metadataBox}>
+                <h3 style={styles.sectionTitle}>Metadata</h3>
+                <table style={styles.metadataTable}>
+                  <tbody>
+                    <tr>
+                      <td style={styles.metadataLabel}>Title:</td>
+                      <td>{result.metadata.title}</td>
+                    </tr>
+                    <tr>
+                      <td style={styles.metadataLabel}>Author:</td>
+                      <td>{getAuthorDisplay(result.metadata.author)}</td>
+                    </tr>
+                    {result.metadata.page_count && (
+                      <tr>
+                        <td style={styles.metadataLabel}>Pages:</td>
+                        <td>{result.metadata.page_count}</td>
+                      </tr>
+                    )}
+                    {result.metadata.word_count && (
+                      <tr>
+                        <td style={styles.metadataLabel}>Words:</td>
+                        <td>{result.metadata.word_count.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td style={styles.metadataLabel}>Subject:</td>
+                      <td>{result.metadata.subject || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {result.toc && result.toc.length > 0 && (
+                <div style={styles.tocBox}>
+                  <h3 style={styles.sectionTitle}>Table of Contents</h3>
+                  <ul style={styles.tocList}>
+                    {result.toc.map((item, i) => (
+                      <li
+                        key={i}
+                        style={{
+                          ...styles.tocItem,
+                          paddingLeft: `${(item.level - 1) * 20}px`,
+                        }}
+                      >
+                        {item.title}
+                        {item.page && <span style={styles.tocPage}>p. {item.page}</span>}
+                        {item.line && <span style={styles.tocPage}>line {item.line}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div style={styles.previewBox}>
+                <h3 style={styles.sectionTitle}>Text Preview</h3>
+                <pre style={styles.preview}>
+                  {result.text_output?.slice(0, 3000) ||
+                   (result.pages ? JSON.stringify(result.pages.slice(0, 2), null, 2) :
+                    result.sections ? JSON.stringify(result.sections.slice(0, 2), null, 2) : '')}
+                  {(result.text_output?.length || 0) > 3000 && '\n\n... [Download for full content]'}
+                </pre>
+              </div>
+            </div>
+          )}
+        </main>
+
+        <footer style={styles.footer}>
+          <p>Document Extractor - Supports PDF, Markdown, and Word documents</p>
+        </footer>
+      </div>
+    </>
   )
 }
 
