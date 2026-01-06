@@ -1,6 +1,8 @@
 # PDFExtractor
 
-A Python tool for extracting text, metadata, and table of contents from PDF documents, with built-in search and library indexing capabilities.
+A web application and CLI tool for extracting text, metadata, and table of contents from PDF documents, with built-in search and library indexing capabilities.
+
+**Live Demo**: Deploy your own instance on Vercel in minutes!
 
 ## Features
 
@@ -174,18 +176,73 @@ python pdf_search.py "search term" library/
 python pdf_extractor.py textbook.pdf --page-range 45-120 -o chapter3/
 ```
 
+## Deploy to Vercel
+
+### Quick Deploy
+
+1. **Fork or clone this repository** to your GitHub account
+
+2. **Go to [vercel.com](https://vercel.com)** and sign in with GitHub
+
+3. **Click "Add New Project"**
+
+4. **Import your repository**:
+   - Select the PDFExtractor repository from your GitHub
+   - Vercel will auto-detect the Next.js framework
+
+5. **Deploy**:
+   - Click "Deploy"
+   - Wait for the build to complete (2-3 minutes)
+
+6. **Your app is live!**
+   - Vercel provides a URL like `https://pdf-extractor-xxx.vercel.app`
+
+### Manual Deployment (CLI)
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy
+vercel
+
+# For production deployment
+vercel --prod
+```
+
+### Environment & Limits
+
+**Vercel Free Tier**:
+- 60 second function timeout (configured in vercel.json)
+- 50MB max function size
+- Works well for PDFs up to ~20MB
+
+**For larger PDFs**, consider:
+- Vercel Pro plan (longer timeouts)
+- Self-hosting on a VPS
+- Using the CLI tool locally
+
 ## Project Structure
 
 ```
 PDFExtractor/
-├── pdf_extractor.py      # Main extraction CLI
-├── pdf_search.py         # Search CLI
-├── requirements.txt      # Python dependencies
-├── src/
-│   ├── __init__.py
+├── app/                  # Next.js App Router
+│   ├── layout.tsx        # Root layout
+│   └── page.tsx          # Main page (upload UI)
+├── api/                  # Vercel Serverless Functions
+│   ├── extract.py        # PDF extraction endpoint
+│   └── requirements.txt  # Python dependencies
+├── src/                  # CLI modules
 │   ├── extractor.py      # PDF extraction module
 │   ├── indexer.py        # Library indexing module
 │   └── searcher.py       # Search module
+├── pdf_extractor.py      # CLI tool
+├── pdf_search.py         # Search CLI
+├── vercel.json           # Vercel configuration
+├── package.json          # Node.js dependencies
 └── README.md
 ```
 
